@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AnchalAI — Maternal Health Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #f7f3ef;
+            color: #2d2d2d;
+            min-height: 100vh;
+        }
+
+        /* HEADER */
+        header {
+            background: linear-gradient(135deg, #c0392b, #922b21);
+            color: white;
+            padding: 20px 32px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        header .logo {
+            font-size: 28px;
+        }
+
+        header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        header p {
+            font-size: 13px;
+            opacity: 0.85;
+            margin-top: 2px;
+        }
+
+        header .asha-badge {
+            margin-left: auto;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 8px 16px;
+            font-size: 13px;
+        }
+
+        /* STATS BAR */
+        .stats-bar {
+            display: flex;
+            gap: 16px;
+            padding: 20px 32px;
+            background: white;
+            border-bottom: 1px solid #e8e0d8;
+        }
+
+        .stat-card {
+            flex: 1;
+            text-align: center;
+            padding: 12px;
+            border-radius: 10px;
+        }
+
+        .stat-card.high {
+            background: #fdf2f2;
+            border: 1px solid #e8b4b4;
+        }
+
+        .stat-card.medium {
+            background: #fef9f0;
+            border: 1px solid #f0d080;
+        }
+
+        .stat-card.low {
+            background: #f0faf4;
+            border: 1px solid #a8d8b8;
+        }
+
+        .stat-card .number {
+            font-size: 28px;
+            font-weight: 800;
+        }
+
+        .stat-card.high .number {
+            color: #c0392b;
+        }
+
+        .stat-card.medium .number {
+            color: #d4860a;
+        }
+
+        .stat-card.low .number {
+            color: #27ae60;
+        }
+
+        .stat-card .label {
+            font-size: 12px;
+            color: #888;
+            margin-top: 2px;
+        }
+
+        /* MAIN */
+        main {
+            padding: 24px 32px;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #555;
+            margin-bottom: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        /* WOMAN CARDS */
+        .women-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .woman-card {
+            background: white;
+            border-radius: 12px;
+            padding: 18px 22px;
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+            border-left: 5px solid #ddd;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+
+        .woman-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        .woman-card.High {
+            border-left-color: #c0392b;
+        }
+
+        .woman-card.Medium {
+            border-left-color: #e67e22;
+        }
+
+        .woman-card.Low {
+            border-left-color: #27ae60;
+        }
+
+        .rank {
+            font-size: 20px;
+            font-weight: 800;
+            color: #ccc;
+            width: 32px;
+            text-align: center;
+        }
+
+        .avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #f0e6e6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+        }
+
+        .woman-info {
+            flex: 1;
+        }
+
+        .woman-info .name {
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .woman-info .details {
+            font-size: 12px;
+            color: #888;
+            margin-top: 3px;
+        }
+
+        .risk-badge {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .risk-badge.High {
+            background: #fdf2f2;
+            color: #c0392b;
+        }
+
+        .risk-badge.Medium {
+            background: #fef9f0;
+            color: #d4860a;
+        }
+
+        .risk-badge.Low {
+            background: #f0faf4;
+            color: #27ae60;
+        }
+
+        .risk-percent {
+            font-size: 22px;
+            font-weight: 800;
+            width: 64px;
+            text-align: right;
+        }
+
+        .risk-percent.High {
+            color: #c0392b;
+        }
+
+        .risk-percent.Medium {
+            color: #e67e22;
+        }
+
+        .risk-percent.Low {
+            color: #27ae60;
+        }
+
+        .reach-btn {
+            background: #c0392b;
+            color: white;
+            border: none;
+            padding: 9px 18px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .reach-btn:hover {
+            background: #a93226;
+        }
+
+        /* MODAL */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 520px;
+            width: 90%;
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal h2 {
+            font-size: 18px;
+            margin-bottom: 6px;
+        }
+
+        .modal .subtitle {
+            font-size: 13px;
+            color: #888;
+            margin-bottom: 20px;
+        }
+
+        .factors-list {
+            background: #fdf2f2;
+            border-radius: 10px;
+            padding: 14px 18px;
+            margin-bottom: 20px;
+        }
+
+        .factors-list p {
+            font-size: 13px;
+            font-weight: 700;
+            color: #c0392b;
+            margin-bottom: 8px;
+        }
+
+        .factors-list ul {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .factors-list ul li::before {
+            content: "⚠ ";
+            font-size: 11px;
+        }
+
+        .factors-list ul li {
+            font-size: 13px;
+            color: #555;
+        }
+
+        .lang-select {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .lang-btn {
+            flex: 1;
+            padding: 9px;
+            border: 2px solid #e0d8d0;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .lang-btn.active {
+            border-color: #c0392b;
+            background: #fdf2f2;
+            color: #c0392b;
+        }
+
+        .message-box {
+            background: #f7f3ef;
+            border-radius: 10px;
+            padding: 16px;
+            font-size: 15px;
+            line-height: 1.7;
+            min-height: 80px;
+            margin-bottom: 20px;
+            border: 1px solid #e8e0d8;
+        }
+
+        .message-box.loading {
+            color: #aaa;
+            font-style: italic;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-primary {
+            flex: 1;
+            background: #c0392b;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .btn-secondary {
+            flex: 1;
+            background: white;
+            color: #555;
+            border: 2px solid #e0d8d0;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .loading-spinner {
+            text-align: center;
+            padding: 40px;
+            color: #aaa;
+            font-size: 15px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="logo">🤱</div>
+        <div>
+            <h1>AnchalAI</h1>
+            <p>Maternal Health Dropout Prevention — Powered by Google Gemini</p>
+        </div>
+        <div class="asha-badge">👤 ASHA Worker Dashboard</div>
+    </header>
+
+    <div class="stats-bar" id="statsBar">
+        <div class="stat-card high">
+            <div class="number" id="highCount">—</div>
+            <div class="label">High Risk</div>
+        </div>
+        <div class="stat-card medium">
+            <div class="number" id="medCount">—</div>
+            <div class="label">Medium Risk</div>
+        </div>
+        <div class="stat-card low">
+            <div class="number" id="lowCount">—</div>
+            <div class="label">Low Risk</div>
+        </div>
+    </div>
+
+    <main>
+        <div class="section-title">Women Ranked by Dropout Risk</div>
+        <div class="women-list" id="womenList">
+            <div class="loading-spinner">Loading profiles...</div>
+        </div>
+    </main>
+
+    <!-- MODAL -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <h2 id="modalTitle">Reach Out</h2>
+            <p class="subtitle" id="modalSubtitle"></p>
+
+            <div class="factors-list" id="factorsList"></div>
+
+            <div class="lang-select">
+                <button class="lang-btn active" onclick="switchLang('Bengali', this)">বাংলা Bengali</button>
+                <button class="lang-btn" onclick="switchLang('Hindi', this)">हिंदी Hindi</button>
+                <button class="lang-btn" onclick="switchLang('English', this)">English</button>
+            </div>
+
+            <div class="message-box" id="messageBox">Generating message...</div>
+
+            <div class="modal-actions">
+                <button class="btn-primary" onclick="markContacted()">✓ Mark Contacted</button>
+                <button class="btn-secondary" onclick="closeModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API = "http://127.0.0.1:5000";
+        let currentProfile = null;
+        let currentLang = "Bengali";
+        let allWomen = [];
+
+        const names = [
+            "Rina Devi", "Sunita Mondal", "Parvati Das", "Meera Ghosh", "Anita Saha",
+            "Lakshmi Roy", "Priya Mandal", "Rekha Biswas", "Champa Sarkar", "Durga Pal",
+            "Kavita Singh", "Shanti Devi", "Radha Kumari", "Usha Bala", "Geeta Mahato",
+            "Sumitra Das", "Anjali Roy", "Bina Halder", "Mala Chatterjee", "Tara Mondal"
+        ];
+
+        async function loadDashboard() {
+            try {
+                const res = await fetch(`${API}/dashboard`);
+                const women = await res.json();
+                allWomen = women;
+
+                // Stats
+                document.getElementById("highCount").textContent =
+                    women.filter(w => w.risk_label === "High").length;
+                document.getElementById("medCount").textContent =
+                    women.filter(w => w.risk_label === "Medium").length;
+                document.getElementById("lowCount").textContent =
+                    women.filter(w => w.risk_label === "Low").length;
+
+                // Render cards
+                const list = document.getElementById("womenList");
+                list.innerHTML = "";
+
+                women.forEach((w, i) => {
+                    const missedVisit = w.attended_last_visit === 0 ? "Missed last visit" : "Attended last visit";
+                    const card = document.createElement("div");
+                    card.className = `woman-card ${w.risk_label}`;
+                    card.innerHTML = `
+          <div class="rank">${i + 1}</div>
+          <div class="avatar">🤱</div>
+          <div class="woman-info">
+            <div class="name">${names[i] || "Patient #" + w.id}</div>
+            <div class="details">Age ${w.age} · ${w.distance_to_phc_km} km from PHC · ${missedVisit}</div>
+          </div>
+          <span class="risk-badge ${w.risk_label}">${w.risk_label} Risk</span>
+          <div class="risk-percent ${w.risk_label}">${w.risk_percent}%</div>
+          <button class="reach-btn" onclick="openModal(${i})">Reach Out</button>
+        `;
+                    list.appendChild(card);
+                });
+
+            } catch (e) {
+                document.getElementById("womenList").innerHTML =
+                    `<div class="loading-spinner">⚠ Cannot connect to AnchalAI backend.<br>Make sure app.py is running on port 5000.</div>`;
+            }
+        }
+
+        async function openModal(index) {
+            const w = allWomen[index];
+            currentProfile = w;
+            currentLang = "Bengali";
+
+            document.querySelectorAll(".lang-btn").forEach((b, i) => {
+                b.classList.toggle("active", i === 0);
+            });
+
+            document.getElementById("modalTitle").textContent =
+                `Reach Out to ${names[index] || "Patient #" + w.id}`;
+            document.getElementById("modalSubtitle").textContent =
+                `Risk Score: ${w.risk_percent}% · ${w.risk_label} Risk`;
+
+            document.getElementById("modalOverlay").classList.add("active");
+            await generateMessage();
+        }
+
+        async function generateMessage() {
+            const box = document.getElementById("messageBox");
+            box.className = "message-box loading";
+            box.textContent = "Generating personalized message with Gemini...";
+
+            try {
+                const res = await fetch(`${API}/predict`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ ...currentProfile, language: currentLang })
+                });
+                const data = await res.json();
+
+                box.className = "message-box";
+                box.textContent = data.message;
+
+                // Show factors
+                if (data.top_factors && data.top_factors.length > 0) {
+                    document.getElementById("factorsList").innerHTML = `
+          <p>⚠ Why she's flagged:</p>
+          <ul>${data.top_factors.map(f => `<li>${f}</li>`).join("")}</ul>
+        `;
+                }
+
+            } catch (e) {
+                box.className = "message-box";
+                box.textContent = "Error generating message. Check backend connection.";
+            }
+        }
+
+        async function switchLang(lang, btn) {
+            currentLang = lang;
+            document.querySelectorAll(".lang-btn").forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+            await generateMessage();
+        }
+
+        function markContacted() {
+            alert("✓ Marked as contacted. Follow-up scheduled in 7 days.");
+            closeModal();
+        }
+
+        function closeModal() {
+            document.getElementById("modalOverlay").classList.remove("active");
+        }
+
+        loadDashboard();
+    </script>
+</body>
+
+</html>
