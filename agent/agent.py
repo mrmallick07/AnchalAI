@@ -14,6 +14,8 @@ import pickle
 import pandas as pd
 from dotenv import load_dotenv
 from google.adk.agents import Agent, SequentialAgent
+from google.adk.agents.callback_context import CallbackContext
+from google.adk.models import LlmResponse
 
 # ---------------------------------------------------------------------------
 # Load environment variables and configure Vertex AI for ADK
@@ -27,9 +29,11 @@ os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "1"
 # ---------------------------------------------------------------------------
 # Load the trained model once at module level
 # ---------------------------------------------------------------------------
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "model", "anchal_model.pkl")
+MODEL_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "model", "anchal_model.pkl"))
+print(f"[AGENT INIT] Loading model from: {MODEL_PATH}")
 with open(MODEL_PATH, "rb") as f:
     _model = pickle.load(f)
+print(f"[AGENT INIT] Model loaded successfully: {type(_model).__name__}")
 
 FEATURES = [
     "age", "distance_to_phc_km", "previous_pregnancies",
@@ -84,6 +88,8 @@ def predict_dropout_risk(
         "asha_visits_so_far": asha_visits_so_far,
     }
 
+    print(f"[TOOL] predict_dropout_risk called with profile: {profile}")
+
     df = pd.DataFrame([profile])
     risk_prob = _model.predict_proba(df)[0][1]
     risk_percent = round(risk_prob * 100, 1)
@@ -112,11 +118,28 @@ def predict_dropout_risk(
     if household_income_level == 1:
         factors.append("Low household income")
 
-    return {
+    result = {
         "risk_percent": risk_percent,
         "risk_label": risk_label,
         "top_factors": factors,
     }
+    print(f"[TOOL] predict_dropout_risk result: {json.dumps(result)}")
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Debug callbacks — print session state after each agent runs
+# ---------------------------------------------------------------------------
+def _after_agent_callback(callback_context: CallbackContext) -> None:
+    """Prints session state after an agent completes for debugging."""
+    agent_name = callback_context.agent_name
+    state = dict(callback_context.state)
+    print(f"\n[DEBUG] === After {agent_name} ===")
+    for key, value in state.items():
+        if not key.startswith("_"):
+            val_str = str(value)[:500]
+            print(f"[DEBUG]   state['{key}'] = {val_str}")
+    print(f"[DEBUG] === End {agent_name} ===\n")
 
 
 # ---------------------------------------------------------------------------
@@ -128,25 +151,25 @@ risk_analyst_agent = Agent(
     description="Predicts maternal dropout risk from a woman's profile using a trained ML model.",
     instruction="""You are the Risk Analyst Agent for AnchalAI.
 
-Your job is to assess the dropout risk of a pregnant woman.
+Your ONLY job is to assess the dropout risk of a pregnant woman by calling the
+predict_dropout_risk tool.
 
-When you receive a woman's profile, call the predict_dropout_risk tool with ALL of
-the following fields extracted from the profile:
+STEP 1: Extract these fields from the user message:
   age, distance_to_phc_km, previous_pregnancies, attended_last_visit,
   household_income_level, husband_support, literacy, trimester_at_registration,
   harvest_season, asha_visits_so_far
 
-After receiving the tool result, respond with ONLY a JSON object in this exact format:
-{
-  "risk_percent": <number>,
-  "risk_label": "<High/Medium/Low>",
-  "top_factors": ["factor1", "factor2", ...]
-}
+STEP 2: Call the predict_dropout_risk tool with those exact values.
 
-Do not add any other text or explanation outside the JSON.
+STEP 3: After getting the tool result, respond with ONLY the tool result as a
+JSON object. Do NOT modify the values. The format MUST be:
+{"risk_percent": <number>, "risk_label": "<High/Medium/Low>", "top_factors": ["factor1", "factor2"]}
+
+CRITICAL: Output ONLY the JSON. No markdown, no explanation, no extra text.
 """,
     tools=[predict_dropout_risk],
     output_key="risk_assessment",
+    after_agent_callback=_after_agent_callback,
 )
 
 
@@ -184,6 +207,7 @@ Rules:
 Respond with ONLY the outreach message text. Nothing else.
 """,
     output_key="outreach_message",
+    after_agent_callback=_after_agent_callback,
 )
 
 
@@ -198,23 +222,20 @@ escalation_agent = Agent(
 
 You decide what follow-up action should be taken based on the risk assessment.
 
-You will receive the risk assessment: {risk_assessment}
+The risk assessment is: {risk_assessment}
 
-Apply these rules strictly:
-- If risk_percent < 35:  action = "Schedule routine follow-up"
+Apply these rules STRICTLY based on risk_percent:
+- If risk_percent < 35:  action = "Schedule routine follow-up in 7 days"
 - If risk_percent >= 35 and risk_percent <= 60:  action = "ASHA home visit within 7 days"
 - If risk_percent > 60:  action = "Immediate PHC alert + home visit within 48 hours"
 
 Respond with ONLY a JSON object in this exact format:
-{
-  "risk_percent": <number from the assessment>,
-  "risk_label": "<from the assessment>",
-  "action": "<one of the three actions above>"
-}
+{"risk_percent": <number from the assessment>, "risk_label": "<from the assessment>", "action": "<one of the three actions above>"}
 
-Do not add any other text or explanation outside the JSON.
+CRITICAL: Output ONLY the JSON. No markdown, no explanation, no extra text.
 """,
     output_key="escalation_decision",
+    after_agent_callback=_after_agent_callback,
 )
 
 
