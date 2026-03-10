@@ -16,14 +16,13 @@ from dotenv import load_dotenv
 from google.adk.agents import Agent, SequentialAgent
 
 # ---------------------------------------------------------------------------
-# Load environment variables and configure API key for ADK
+# Load environment variables and configure Vertex AI for ADK
 # ---------------------------------------------------------------------------
 load_dotenv()
 
-# ADK reads GOOGLE_GENAI_API_KEY automatically; map from our .env's GEMINI_API_KEY
-api_key = os.getenv("GEMINI_API_KEY")
-if api_key:
-    os.environ["GOOGLE_GENAI_API_KEY"] = api_key
+os.environ["GOOGLE_CLOUD_PROJECT"] = os.getenv("GOOGLE_CLOUD_PROJECT", "maternal-health-ai-489810")
+os.environ["GOOGLE_CLOUD_LOCATION"] = "us-central1"
+os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "1"
 
 # ---------------------------------------------------------------------------
 # Load the trained model once at module level
