@@ -125,7 +125,7 @@ def predict_dropout_risk(
 # ---------------------------------------------------------------------------
 risk_analyst_agent = Agent(
     name="risk_analyst_agent",
-    model="gemini-1.5-flash",
+    model="gemini-2.0-flash",
     description="Predicts maternal dropout risk from a woman's profile using a trained ML model.",
     instruction="""You are the Risk Analyst Agent for AnchalAI.
 
@@ -156,7 +156,7 @@ Do not add any other text or explanation outside the JSON.
 # ---------------------------------------------------------------------------
 communication_agent = Agent(
     name="communication_agent",
-    model="gemini-1.5-flash",
+    model="gemini-2.0-flash",
     description="Generates culturally appropriate outreach messages for ASHA workers.",
     instruction="""You are the Communication Agent for AnchalAI.
 
@@ -193,7 +193,7 @@ Respond with ONLY the outreach message text. Nothing else.
 # ---------------------------------------------------------------------------
 escalation_agent = Agent(
     name="escalation_agent",
-    model="gemini-1.5-flash",
+    model="gemini-2.0-flash",
     description="Decides the escalation action based on the dropout risk level.",
     instruction="""You are the Escalation Agent for AnchalAI.
 
