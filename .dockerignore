@@ -1,4 +1,9 @@
 venv/
+.venv/
 __pycache__/
+*.pyc
 .env
 .git/
+*.pkl
+data/women_profiles.csv
+frontend/
