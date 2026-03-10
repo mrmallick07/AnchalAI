@@ -90,7 +90,7 @@ async def home():
     return {"status": "AnchalAI Agent is running"}
 
 
-@app.post("/predict", response_model=CareActionPlan)
+@app.post("/predict")
 async def predict(profile: WomanProfile):
     """
     Accept a woman's profile and return a complete care action plan
@@ -133,32 +133,74 @@ async def predict(profile: WomanProfile):
             user_id="asha_worker",
             session_id=session_id,
         )
-        state = updated_session.state if updated_session else {}
+        state = dict(updated_session.state) if updated_session else {}
 
-        # Parse risk assessment
-        risk_raw = state.get("risk_assessment", "{}")
+        # --- Debug: print raw state values ---
+        print("\n[MAIN] ====== Session State After Pipeline ======")
+        for key in ["risk_assessment", "outreach_message", "escalation_decision", "woman_profile"]:
+            raw = state.get(key, "<MISSING>")
+            print(f"[MAIN]   state['{key}'] = {str(raw)[:500]}")
+        print("[MAIN] ============================================\n")
+
+        # --- Helper: safely parse JSON from state (handles markdown fences) ---
+        def _safe_parse_json(raw_value, fallback: dict) -> dict:
+            """Parse a state value that may be a dict, JSON string, or markdown-wrapped JSON."""
+            if isinstance(raw_value, dict):
+                return raw_value
+            if not isinstance(raw_value, str) or not raw_value.strip():
+                return fallback
+            text = raw_value.strip()
+            # Strip markdown code fences if present (```json ... ``` or ``` ... ```)
+            if text.startswith("```"):
+                lines = text.split("\n")
+                # Remove first line (```json or ```) and last line (```)
+                lines = [l for l in lines if not l.strip().startswith("```")]
+                text = "\n".join(lines).strip()
+            try:
+                parsed = json.loads(text)
+                return parsed if isinstance(parsed, dict) else fallback
+            except (json.JSONDecodeError, TypeError):
+                print(f"[MAIN] WARNING: Could not parse JSON: {text[:200]}")
+                return fallback
+
+        # --- Parse risk assessment ---
+        risk_raw = state.get("risk_assessment", None)
+        risk_data = _safe_parse_json(risk_raw, {
+            "risk_percent": 0,
+            "risk_label": "Unknown",
+            "top_factors": [],
+        })
+        risk_percent = risk_data.get("risk_percent", 0)
+        risk_label = risk_data.get("risk_label", "Unknown")
+        top_factors = risk_data.get("top_factors", [])
+
+        # Ensure risk_percent is a number
         try:
-            risk_data = json.loads(risk_raw) if isinstance(risk_raw, str) else risk_raw
-        except (json.JSONDecodeError, TypeError):
-            risk_data = {"risk_percent": 0, "risk_label": "Unknown", "top_factors": []}
+            risk_percent = float(risk_percent)
+        except (ValueError, TypeError):
+            risk_percent = 0.0
 
-        # Parse escalation decision
-        escalation_raw = state.get("escalation_decision", "{}")
-        try:
-            escalation_data = json.loads(escalation_raw) if isinstance(escalation_raw, str) else escalation_raw
-        except (json.JSONDecodeError, TypeError):
-            escalation_data = {"action": "Unable to determine escalation"}
+        # --- Parse escalation decision ---
+        escalation_raw = state.get("escalation_decision", None)
+        escalation_data = _safe_parse_json(escalation_raw, {
+            "action": "Unable to determine escalation",
+        })
 
-        # Get outreach message
+        # --- Get outreach message (plain text, not JSON) ---
         outreach_message = state.get("outreach_message", "Message generation unavailable.")
+        if not isinstance(outreach_message, str) or not outreach_message.strip():
+            outreach_message = "Message generation unavailable."
 
-        return CareActionPlan(
-            risk_percent=risk_data.get("risk_percent", 0),
-            risk_label=risk_data.get("risk_label", "Unknown"),
-            top_factors=risk_data.get("top_factors", []),
-            message=outreach_message,
-            escalation=escalation_data,
-        )
+        # --- Build final response ---
+        response = {
+            "risk_percent": risk_percent,
+            "risk_label": risk_label,
+            "top_factors": top_factors,
+            "message": outreach_message.strip(),
+            "escalation": escalation_data,
+        }
+        print(f"[MAIN] Final response: {json.dumps(response, ensure_ascii=False, default=str)[:1000]}")
+        return response
 
     except Exception as e:
         print(f"[PREDICT ERROR] {e}")
