@@ -9,7 +9,7 @@ from api.gemini_message import generate_asha_message
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins=["https://mrmallick07.github.io", "http://127.0.0.1:5500", "http://localhost:5500", "null"])
 
 # Load trained model
 with open("model/anchal_model.pkl", "rb") as f:
