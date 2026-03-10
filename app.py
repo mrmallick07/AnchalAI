@@ -105,7 +105,10 @@ def dashboard():
     # Return top 20 for dashboard
     result = df.head(20)[[
         "id", "age", "distance_to_phc_km",
-        "attended_last_visit", "risk_percent", "risk_label"
+        "attended_last_visit", "risk_percent", "risk_label",
+        "previous_pregnancies", "household_income_level",
+        "husband_support", "literacy", "trimester_at_registration",
+        "harvest_season", "asha_visits_so_far"
     ]].to_dict(orient="records")
 
     return jsonify(result)
