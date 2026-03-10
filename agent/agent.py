@@ -133,12 +133,16 @@ def predict_dropout_risk(
 def _after_agent_callback(callback_context: CallbackContext) -> None:
     """Prints session state after an agent completes for debugging."""
     agent_name = callback_context.agent_name
-    state = dict(callback_context.state)
+    state = callback_context.state
     print(f"\n[DEBUG] === After {agent_name} ===")
-    for key, value in state.items():
-        if not key.startswith("_"):
-            val_str = str(value)[:500]
-            print(f"[DEBUG]   state['{key}'] = {val_str}")
+    # Access known state keys individually (State object does not support dict() conversion)
+    for key in ["risk_assessment", "outreach_message", "escalation_decision", "woman_profile"]:
+        try:
+            value = state.get(key, None)
+            if value is not None:
+                print(f"[DEBUG]   state['{key}'] = {str(value)[:500]}")
+        except Exception:
+            pass
     print(f"[DEBUG] === End {agent_name} ===\n")
 
 
