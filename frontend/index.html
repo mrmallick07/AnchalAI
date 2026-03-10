@@ -61,8 +61,6 @@
 
         /* ── SIDEBAR ── */
         .layout {
-            display: grid;
-            grid-template-columns: 240px 1fr;
             min-height: 100vh;
         }
 
@@ -280,6 +278,7 @@
             gap: 20px;
             padding: 28px 32px 0;
             animation: fadeUp 0.5s ease-out forwards;
+            min-width: 0;
         }
 
         .stat-card {
@@ -291,6 +290,7 @@
             overflow: hidden;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
             transition: transform 0.2s, box-shadow 0.2s;
+            min-width: 0;
         }
 
         .stat-card:hover {
@@ -620,6 +620,7 @@
         .woman-details {
             flex: 1;
             min-width: 0;
+            overflow: hidden;
         }
 
         .woman-name {
@@ -631,7 +632,8 @@
 
         .woman-meta {
             display: flex;
-            gap: 16px;
+            gap: 10px;
+            flex-wrap: wrap;
         }
 
         .meta-chip {
