@@ -49,7 +49,11 @@ def predict():
         # Generate Gemini message
         profile["risk_percent"] = risk_percent
         language = data.get("language", "Bengali")
-        message = generate_asha_message(profile, language=language)
+        try:
+            message = generate_asha_message(profile, language=language)
+        except Exception as e:
+            print(f"[PREDICT] Gemini message failed: {e}")
+            message = "Message generation temporarily unavailable. Please contact this patient directly."
 
         return jsonify({
             "risk_percent": risk_percent,

@@ -1,6 +1,7 @@
 from google import genai
 from dotenv import load_dotenv
 import os
+import traceback
 
 load_dotenv()
 
@@ -44,11 +45,16 @@ Rules:
 Only output the message. Nothing else.
 """
 
-    response = client.models.generate_content(
-        model='gemini-2.5-flash',
-        contents=prompt
-    )
-    return response.text.strip()
+    try:
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt
+        )
+        return response.text.strip()
+    except Exception as e:
+        print(f"[GEMINI ERROR] Failed to generate message: {e}")
+        traceback.print_exc()
+        raise
 
 
 # Test it directly
