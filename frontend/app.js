@@ -4,7 +4,7 @@
    ═══════════════════════════════════════════════════════════════ */
 
 const API = "https://anchalai-backend-961197586142.asia-south1.run.app";
-// const API = "https://anchalai-backend-961197586142.asia-south1.run.app"; // uncomment for local dev
+// const API = "https://anchalai-backend-961197586142.asia-south1.run.app";
 
 let allWomen = [];
 let filteredWomen = [];
@@ -536,17 +536,17 @@ function renderFeatureImportance(features) {
         const displayName = name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
         ctx.fillText(displayName, labelW - 10, y + barH / 2 + 4);
 
-        // Bar
+        // Bar — use brand gradient
         const gradient = ctx.createLinearGradient(labelW, 0, labelW + barW, 0);
-        gradient.addColorStop(0, '#0D6E6E');
-        gradient.addColorStop(1, '#128080');
+        gradient.addColorStop(0, '#2D7D8B');
+        gradient.addColorStop(1, '#3A9E9E');
         ctx.fillStyle = gradient;
         ctx.beginPath();
         ctx.roundRect(labelW, y, barW, barH, 4);
         ctx.fill();
 
         // Value
-        ctx.fillStyle = isDark ? '#E8E4E0' : '#1C1C1E';
+        ctx.fillStyle = isDark ? '#E8E4E0' : '#2C2420';
         ctx.textAlign = 'left';
         ctx.fillText((val * 100).toFixed(1) + '%', labelW + barW + 6, y + barH / 2 + 4);
     });
@@ -580,7 +580,6 @@ function toggleTheme() {
     localStorage.setItem('anchalai-theme', next);
     document.getElementById('themeBtn').textContent = next === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
 
-    // Redraw charts
     const high = allWomen.filter(w => w.risk_label === 'High').length;
     const med = allWomen.filter(w => w.risk_label === 'Medium').length;
     const low = allWomen.filter(w => w.risk_label === 'Low').length;
@@ -612,6 +611,92 @@ function showToast(msg) {
     setTimeout(() => toast.remove(), 3500);
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// GEMINI CHAT ASSISTANT — "Anchal Sahayak"
+// ═══════════════════════════════════════════════════════════════════════════════
+let chatOpen = false;
+let chatMessages = [];
+
+function toggleChat() {
+    chatOpen = !chatOpen;
+    document.getElementById('chatPanel').classList.toggle('active', chatOpen);
+    document.getElementById('chatFab').classList.toggle('hidden', chatOpen);
+
+    if (chatOpen && chatMessages.length === 0) {
+        // Welcome message
+        addChatMessage('bot', 'नमस्ते! 🙏 मैं आंचल सहायक हूँ — आपकी AI सहायिका।\n\nआप मुझसे कुछ भी पूछ सकती हैं:\n• "सीता को क्या बताऊं उनकी अगली विज़िट के बारे में?"\n• "हाई रिस्क का मतलब क्या है?"\n• "तीसरी तिमाही में क्या ध्यान रखें?"');
+    }
+
+    setTimeout(() => document.getElementById('chatInput')?.focus(), 100);
+}
+
+function closeChat() {
+    chatOpen = false;
+    document.getElementById('chatPanel').classList.remove('active');
+    document.getElementById('chatFab').classList.remove('hidden');
+}
+
+function addChatMessage(type, text) {
+    chatMessages.push({ type, text });
+    renderChatMessages();
+}
+
+function renderChatMessages() {
+    const container = document.getElementById('chatMessages');
+    container.innerHTML = chatMessages.map(m => {
+        const formatted = m.text.replace(/\n/g, '<br>');
+        return `<div class="chat-msg ${m.type}">${formatted}</div>`;
+    }).join('');
+    container.scrollTop = container.scrollHeight;
+}
+
+async function sendChatMessage() {
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+    if (!message) return;
+
+    // Add user message
+    addChatMessage('user', message);
+    input.value = '';
+
+    // Show typing indicator
+    const typingId = Date.now();
+    chatMessages.push({ type: 'typing', text: 'टाइप कर रही हूँ...', id: typingId });
+    renderChatMessages();
+
+    try {
+        const body = {
+            message: message,
+            language: 'Hindi',
+        };
+        // If a patient is currently selected in the modal, pass context
+        if (currentProfile) {
+            body.patient_id = currentProfile.id;
+        }
+
+        const res = await fetch(`${API}/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        const data = await res.json();
+
+        // Remove typing indicator
+        chatMessages = chatMessages.filter(m => m.id !== typingId);
+        addChatMessage('bot', data.reply || 'कुछ गड़बड़ हो गई। फिर से कोशिश करें।');
+    } catch (e) {
+        chatMessages = chatMessages.filter(m => m.id !== typingId);
+        addChatMessage('bot', '⚠️ सर्वर से कनेक्ट नहीं हो पा रहा। कृपया बाद में प्रयास करें।');
+    }
+}
+
+function handleChatKeydown(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendChatMessage();
+    }
+}
+
 // ── Initialization ──────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     // Restore theme
@@ -621,7 +706,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') closeModal();
+        if (e.key === 'Escape') {
+            closeModal();
+            closeChat();
+        }
         if (e.key === '/' && !document.activeElement.closest('input')) {
             e.preventDefault();
             document.getElementById('globalSearch')?.focus();
@@ -632,3 +720,4 @@ document.addEventListener('DOMContentLoaded', () => {
     loadDashboard();
     navigate('dashboard');
 });
+

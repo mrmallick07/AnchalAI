@@ -334,5 +334,83 @@ def analytics():
     return jsonify(result)
 
 
+@app.route("/chat", methods=["POST"])
+def chat():
+    """
+    Gemini Chat Assistant — "Anchal Sahayak"
+    Body: { message, patient_id? (optional), language? (default: Hindi) }
+    Returns: { reply }
+    """
+    try:
+        import google.generativeai as genai
+
+        data = request.json
+        user_message = data.get("message", "")
+        language = data.get("language", "Hindi")
+        patient_id = data.get("patient_id")
+
+        # Build patient context if a patient is selected
+        patient_context = ""
+        if patient_id:
+            df = pd.read_csv("data/women_profiles.csv")
+            patient = df[df["id"] == int(patient_id)]
+            if not patient.empty:
+                p = patient.iloc[0]
+                profiles_df = pd.DataFrame([{f: p[f] for f in FEATURES}])
+                risk_prob = model.predict_proba(profiles_df)[0][1]
+                risk_pct = round(risk_prob * 100, 1)
+                patient_context = f"""
+CURRENT PATIENT CONTEXT:
+- Name: {p.get('name', 'Unknown')}
+- Age: {p['age']} years
+- Village: {p.get('village', 'Unknown')}
+- Distance to PHC: {p['distance_to_phc_km']} km
+- Previous pregnancies: {p['previous_pregnancies']}
+- Last visit attended: {'Yes' if p['attended_last_visit'] == 1 else 'No'}
+- Husband support: {'Yes' if p['husband_support'] == 1 else 'No'}
+- Literacy: {'Literate' if p['literacy'] == 1 else 'Limited literacy'}
+- Trimester at registration: {p['trimester_at_registration']}
+- Dropout risk: {risk_pct}% ({'High' if risk_pct > 60 else 'Medium' if risk_pct > 35 else 'Low'})
+"""
+
+        system_prompt = f"""You are "Anchal Sahayak" (आंचल सहायक), an AI assistant for ASHA (Accredited Social Health Activist) workers in rural India.
+
+Your role:
+- Help ASHA workers understand patient risk factors and what they mean
+- Suggest what to say during home visits
+- Explain medical terms in simple, culturally appropriate language
+- Provide guidance on when to escalate to PHC (Primary Health Centre)
+- Generate motivational messages for pregnant women
+
+Rules:
+1. Reply in {language} (use the script of that language)
+2. Keep responses concise — ASHA workers are busy field workers
+3. Be warm, supportive, and practical
+4. If asked about a specific patient (context provided below), use that data
+5. Never diagnose — always recommend visiting PHC for medical concerns
+6. Focus on antenatal care dropout prevention
+{patient_context}
+"""
+
+        genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+        gemini_model = genai.GenerativeModel("gemini-2.0-flash")
+        response = gemini_model.generate_content(
+            [system_prompt, user_message],
+            generation_config=genai.GenerationConfig(
+                max_output_tokens=500,
+                temperature=0.7,
+            )
+        )
+
+        reply = response.text.strip()
+        return jsonify({"reply": reply})
+
+    except Exception as e:
+        print(f"[CHAT] Error: {e}")
+        return jsonify({
+            "reply": "मुझसे बात करने के लिए धन्यवाद। अभी कोई तकनीकी समस्या है। कृपया कुछ देर बाद पुनः प्रयास करें। (Thank you for chatting. There is a technical issue. Please try again later.)"
+        }), 200
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", debug=False, port=8080)

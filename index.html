@@ -17,9 +17,11 @@
     <!-- SIDEBAR -->
     <aside>
         <div class="sidebar-brand">
-            <div class="brand-icon">🤱</div>
-            <div class="brand-name">AnchalAI</div>
-            <div class="brand-tagline">Maternal Care Intelligence</div>
+            <img src="frontend/logo.png" alt="AnchalAI" class="brand-logo" />
+            <div class="brand-text">
+                <div class="brand-name">AnchalAI</div>
+                <div class="brand-tagline">Maternal Care Intelligence</div>
+            </div>
         </div>
 
         <nav class="sidebar-nav">
@@ -237,6 +239,27 @@
                     <button class="btn-secondary" onclick="closeModal()">Close</button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- GEMINI CHAT ASSISTANT -->
+    <button class="chat-fab" id="chatFab" onclick="toggleChat()" title="Chat with Anchal Sahayak">💬</button>
+
+    <div class="chat-panel" id="chatPanel">
+        <div class="chat-header">
+            <div class="chat-header-left">
+                <div class="ch-icon">🤖</div>
+                <div>
+                    <div class="ch-name">Anchal Sahayak</div>
+                    <div class="ch-sub">Powered by Gemini AI</div>
+                </div>
+            </div>
+            <button class="chat-close" onclick="closeChat()">✕</button>
+        </div>
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-input-area">
+            <input type="text" id="chatInput" placeholder="कुछ भी पूछें... (Ask anything)" onkeydown="handleChatKeydown(event)" />
+            <button class="chat-send" onclick="sendChatMessage()">➤</button>
         </div>
     </div>
 

@@ -8,4 +8,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 EXPOSE 8080
 
-CMD ["python", "-m", "agent.main"]
+CMD ["python", "app.py"]
