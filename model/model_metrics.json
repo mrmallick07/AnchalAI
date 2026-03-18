@@ -1,0 +1,27 @@
+{
+  "accuracy": 0.57,
+  "auc_roc": 0.6354,
+  "precision": 0.4194,
+  "recall": 0.3421,
+  "f1_score": 0.3768,
+  "cv_auc_mean": 0.6465,
+  "cv_auc_std": 0.0505,
+  "feature_importance": {
+    "distance_to_phc_km": 0.2472,
+    "age": 0.185,
+    "previous_pregnancies": 0.1001,
+    "asha_visits_so_far": 0.0985,
+    "trimester_at_registration": 0.0958,
+    "attended_last_visit": 0.0884,
+    "household_income_level": 0.0572,
+    "husband_support": 0.0502,
+    "harvest_season": 0.0416,
+    "literacy": 0.036
+  },
+  "n_train": 400,
+  "n_test": 100,
+  "n_features": 10,
+  "model_type": "RandomForestClassifier",
+  "n_estimators": 200,
+  "max_depth": 8
+}

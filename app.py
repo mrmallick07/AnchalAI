@@ -1,19 +1,47 @@
+"""
+AnchalAI — Flask Backend API
+
+Endpoints:
+  GET  /               — health check
+  GET  /dashboard      — all women profiles with risk scores
+  POST /predict        — predict risk for a single profile + Gemini message
+  POST /contact        — log an outreach contact
+  GET  /contacts       — get outreach history
+  GET  /analytics      — aggregate analytics data
+"""
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pandas as pd
 import pickle
 import os
+import json
+from datetime import datetime
 from dotenv import load_dotenv
 from api.gemini_message import generate_asha_message
 
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app, origins=["https://mrmallick07.github.io", "http://127.0.0.1:5500", "http://localhost:5500", "null"])
+CORS(app, origins=[
+    "https://mrmallick07.github.io",
+    "http://127.0.0.1:5500",
+    "http://localhost:5500",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "null",
+])
 
-# Load trained model
+# ── Load trained model ───────────────────────────────────────────────────────
 with open("model/anchal_model.pkl", "rb") as f:
     model = pickle.load(f)
+
+# ── Load model metrics ───────────────────────────────────────────────────────
+METRICS_PATH = "model/model_metrics.json"
+model_metrics = {}
+if os.path.exists(METRICS_PATH):
+    with open(METRICS_PATH) as f:
+        model_metrics = json.load(f)
 
 FEATURES = [
     "age", "distance_to_phc_km", "previous_pregnancies",
@@ -22,15 +50,114 @@ FEATURES = [
     "harvest_season", "asha_visits_so_far"
 ]
 
+# ── Contact log storage ──────────────────────────────────────────────────────
+CONTACTS_FILE = "data/contacts.json"
+
+
+def load_contacts():
+    if os.path.exists(CONTACTS_FILE):
+        with open(CONTACTS_FILE) as f:
+            return json.load(f)
+    return []
+
+
+def save_contacts(contacts):
+    with open(CONTACTS_FILE, "w") as f:
+        json.dump(contacts, f, indent=2, ensure_ascii=False)
+
+
+def get_top_factors(profile):
+    """Returns human-readable risk factors for a profile."""
+    factors = []
+    if profile.get("distance_to_phc_km", 0) > 15:
+        factors.append(f"Lives {profile['distance_to_phc_km']}km from PHC")
+    if profile.get("attended_last_visit") == 0:
+        factors.append("Missed last scheduled visit")
+    if profile.get("age", 25) < 20:
+        factors.append(f"Teenage pregnancy (age {profile['age']})")
+    if profile.get("age", 25) > 35:
+        factors.append(f"Advanced maternal age ({profile['age']})")
+    if profile.get("husband_support") == 0:
+        factors.append("Limited husband support")
+    if profile.get("trimester_at_registration") == 3:
+        factors.append("Registered late in third trimester")
+    if profile.get("harvest_season") == 1:
+        factors.append("Currently harvest season")
+    if profile.get("literacy") == 0:
+        factors.append("Limited literacy")
+    if profile.get("household_income_level") == 1:
+        factors.append("Low household income")
+    if profile.get("asha_visits_so_far", 5) < 2:
+        factors.append("Very few ASHA visits so far")
+    if profile.get("previous_pregnancies", 1) == 0:
+        factors.append("First pregnancy")
+    return factors
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ROUTES
+# ═══════════════════════════════════════════════════════════════════════════════
+
 @app.route("/")
 def home():
-    return jsonify({"status": "AnchalAI is running"})
+    return jsonify({"status": "AnchalAI is running", "version": "2.0"})
+
+
+@app.route("/dashboard", methods=["GET"])
+def dashboard():
+    """
+    Returns all women profiles with risk scores, names, villages, etc.
+    Sorted by highest risk first.
+    """
+    df = pd.read_csv("data/women_profiles.csv")
+    profiles = df[FEATURES].copy()
+
+    probabilities = model.predict_proba(profiles)[:, 1]
+    df["risk_percent"] = (probabilities * 100).round(1)
+    df["risk_label"] = df["risk_percent"].apply(
+        lambda x: "High" if x > 60 else "Medium" if x > 35 else "Low"
+    )
+
+    # Add top factors for each woman
+    records = []
+    for _, row in df.iterrows():
+        profile_dict = row[FEATURES].to_dict()
+        factors = get_top_factors(profile_dict)
+        record = {
+            "id": int(row["id"]),
+            "name": row["name"],
+            "village": row["village"],
+            "phone": row.get("phone", ""),
+            "age": int(row["age"]),
+            "blood_group": row.get("blood_group", ""),
+            "distance_to_phc_km": float(row["distance_to_phc_km"]),
+            "previous_pregnancies": int(row["previous_pregnancies"]),
+            "attended_last_visit": int(row["attended_last_visit"]),
+            "household_income_level": int(row["household_income_level"]),
+            "husband_support": int(row["husband_support"]),
+            "literacy": int(row["literacy"]),
+            "trimester_at_registration": int(row["trimester_at_registration"]),
+            "harvest_season": int(row["harvest_season"]),
+            "asha_visits_so_far": int(row["asha_visits_so_far"]),
+            "registration_date": row.get("registration_date", ""),
+            "last_visit_date": row.get("last_visit_date", ""),
+            "edd": row.get("edd", ""),
+            "asha_worker_name": row.get("asha_worker_name", ""),
+            "risk_percent": float(row["risk_percent"]),
+            "risk_label": row["risk_label"],
+            "top_factors": factors,
+        }
+        records.append(record)
+
+    # Sort by risk_percent descending
+    records.sort(key=lambda x: x["risk_percent"], reverse=True)
+    return jsonify(records)
 
 
 @app.route("/predict", methods=["POST"])
 def predict():
     """
-    Takes a woman's profile, returns risk score + Gemini message.
+    Takes a woman's profile, returns risk score + Gemini message + escalation.
     """
     try:
         data = request.json
@@ -46,8 +173,11 @@ def predict():
             else "Low"
         )
 
-        # Generate Gemini message
+        # Get risk factors
         profile["risk_percent"] = risk_percent
+        top_factors = get_top_factors(profile)
+
+        # Generate Gemini message
         language = data.get("language", "Bengali")
         try:
             message = generate_asha_message(profile, language=language)
@@ -55,61 +185,151 @@ def predict():
             print(f"[PREDICT] Gemini message failed: {e}")
             message = "Message generation temporarily unavailable. Please contact this patient directly."
 
+        # Determine escalation action
+        if risk_percent > 60:
+            escalation = {
+                "action": "Immediate PHC alert + home visit within 48 hours",
+                "urgency": "critical",
+                "icon": "🚨"
+            }
+        elif risk_percent > 35:
+            escalation = {
+                "action": "ASHA home visit within 7 days",
+                "urgency": "moderate",
+                "icon": "⚠️"
+            }
+        else:
+            escalation = {
+                "action": "Schedule routine follow-up in 14 days",
+                "urgency": "low",
+                "icon": "📋"
+            }
+
         return jsonify({
             "risk_percent": risk_percent,
             "risk_label": risk_label,
             "message": message,
-            "top_factors": get_top_factors(profile)
+            "top_factors": top_factors,
+            "escalation": escalation,
         })
 
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
 
-def get_top_factors(profile):
-    """Returns human-readable top risk factors for this profile."""
-    factors = []
-    if profile["distance_to_phc_km"] > 15:
-        factors.append(f"Lives {profile['distance_to_phc_km']}km from PHC")
-    if profile["attended_last_visit"] == 0:
-        factors.append("Missed last scheduled visit")
-    if profile["age"] < 20:
-        factors.append(f"Teenage pregnancy (age {profile['age']})")
-    if profile["husband_support"] == 0:
-        factors.append("Limited husband support")
-    if profile["trimester_at_registration"] == 3:
-        factors.append("Registered late in third trimester")
-    if profile["harvest_season"] == 1:
-        factors.append("Currently harvest season")
-    return factors
-
-
-@app.route("/dashboard", methods=["GET"])
-def dashboard():
+@app.route("/contact", methods=["POST"])
+def log_contact():
     """
-    Returns all women profiles with risk scores — sorted highest risk first.
-    This powers the ASHA worker's main view.
+    Log an outreach contact.
+    Body: { patient_id, patient_name, language, message, risk_percent, risk_label }
+    """
+    try:
+        data = request.json
+        contacts = load_contacts()
+
+        contact = {
+            "id": len(contacts) + 1,
+            "patient_id": data.get("patient_id"),
+            "patient_name": data.get("patient_name", "Unknown"),
+            "village": data.get("village", ""),
+            "language": data.get("language", "Bengali"),
+            "message": data.get("message", ""),
+            "risk_percent": data.get("risk_percent", 0),
+            "risk_label": data.get("risk_label", "Unknown"),
+            "timestamp": datetime.now().isoformat(),
+            "follow_up_status": "pending",
+        }
+        contacts.append(contact)
+        save_contacts(contacts)
+
+        return jsonify({"status": "ok", "contact_id": contact["id"]})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@app.route("/contacts", methods=["GET"])
+def get_contacts():
+    """Returns all outreach contact history, most recent first."""
+    contacts = load_contacts()
+    contacts.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+    return jsonify(contacts)
+
+
+@app.route("/analytics", methods=["GET"])
+def analytics():
+    """
+    Returns aggregate analytics: risk distribution, village stats,
+    outreach progress, and model metrics.
     """
     df = pd.read_csv("data/women_profiles.csv")
     profiles = df[FEATURES].copy()
-    
+
     probabilities = model.predict_proba(profiles)[:, 1]
     df["risk_percent"] = (probabilities * 100).round(1)
     df["risk_label"] = df["risk_percent"].apply(
         lambda x: "High" if x > 60 else "Medium" if x > 35 else "Low"
     )
 
-    # Sort highest risk first
-    df = df.sort_values("risk_percent", ascending=False)
-    
-    # Return top 20 for dashboard
-    result = df.head(20)[[
-        "id", "age", "distance_to_phc_km",
-        "attended_last_visit", "risk_percent", "risk_label",
-        "previous_pregnancies", "household_income_level",
-        "husband_support", "literacy", "trimester_at_registration",
-        "harvest_season", "asha_visits_so_far"
-    ]].to_dict(orient="records")
+    # Risk distribution
+    risk_dist = df["risk_label"].value_counts().to_dict()
+
+    # Village statistics
+    village_stats = (
+        df.groupby("village")
+        .agg(
+            count=("id", "count"),
+            avg_risk=("risk_percent", "mean"),
+            high_risk_count=("risk_label", lambda x: (x == "High").sum()),
+        )
+        .round(1)
+        .sort_values("avg_risk", ascending=False)
+        .head(15)
+    )
+    village_data = []
+    for village, row in village_stats.iterrows():
+        village_data.append({
+            "village": village,
+            "count": int(row["count"]),
+            "avg_risk": float(row["avg_risk"]),
+            "high_risk_count": int(row["high_risk_count"]),
+        })
+
+    # Outreach contacts summary
+    contacts = load_contacts()
+    total_contacts = len(contacts)
+    contacts_this_week = sum(
+        1 for c in contacts
+        if c.get("timestamp", "")[:10] >= (datetime.now().isoformat()[:10])
+    )
+
+    # Overall stats
+    total_women = len(df)
+    avg_risk = round(df["risk_percent"].mean(), 1)
+    highest_risk = df.loc[df["risk_percent"].idxmax()]
+
+    result = {
+        "total_women": total_women,
+        "risk_distribution": {
+            "High": risk_dist.get("High", 0),
+            "Medium": risk_dist.get("Medium", 0),
+            "Low": risk_dist.get("Low", 0),
+        },
+        "avg_risk_percent": avg_risk,
+        "highest_risk_patient": {
+            "name": highest_risk.get("name", "Unknown"),
+            "village": highest_risk.get("village", ""),
+            "risk_percent": float(highest_risk["risk_percent"]),
+        },
+        "village_stats": village_data,
+        "outreach": {
+            "total_contacts": total_contacts,
+            "contacts_today": contacts_this_week,
+            "pending_follow_ups": sum(
+                1 for c in contacts if c.get("follow_up_status") == "pending"
+            ),
+        },
+        "model_metrics": model_metrics,
+    }
 
     return jsonify(result)
 
