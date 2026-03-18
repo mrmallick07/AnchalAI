@@ -102,7 +102,7 @@
             <div class="chart-grid">
                 <div class="chart-card">
                     <h3>Risk Distribution</h3>
-                    <canvas id="dashDonut" width="300" height="220"></canvas>
+                    <canvas id="dashDonut" style="width: 100%; height: 220px;"></canvas>
                 </div>
                 <div class="chart-card">
                     <h3>🔥 Village Hotspots</h3>
@@ -170,11 +170,11 @@
             <div class="chart-grid">
                 <div class="chart-card">
                     <h3>Risk Distribution</h3>
-                    <canvas id="analyticsDonut" width="300" height="220"></canvas>
+                    <canvas id="analyticsDonut" style="width: 100%; height: 220px;"></canvas>
                 </div>
                 <div class="chart-card">
                     <h3>Feature Importance — What Drives Risk?</h3>
-                    <canvas id="featureCanvas" width="500" height="280"></canvas>
+                    <canvas id="featureCanvas" style="width: 100%; height: 280px;"></canvas>
                 </div>
             </div>
 
@@ -254,7 +254,14 @@
                     <div class="ch-sub">Powered by Gemini AI</div>
                 </div>
             </div>
-            <button class="chat-close" onclick="closeChat()">✕</button>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <select id="chatLang" size="1" style="font-size: 11px; padding: 2px 4px; border-radius: 4px; background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.4);" onchange="updateChatPlaceholder()">
+                    <option value="Bengali" style="color: black;">বাংলা</option>
+                    <option value="Hindi" selected style="color: black;">हिंदी</option>
+                    <option value="English" style="color: black;">English</option>
+                </select>
+                <button class="chat-close" onclick="closeChat()">✕</button>
+            </div>
         </div>
         <div class="chat-messages" id="chatMessages"></div>
         <div class="chat-input-area">

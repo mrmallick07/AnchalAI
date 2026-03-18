@@ -142,8 +142,17 @@ function renderRiskDonut(canvasId, high, med, low) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
+    
+    // Auto-scale for retina displays
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0) return; // Hidden
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+
     const total = high + med + low || 1;
-    const w = canvas.width, h = canvas.height;
+    const w = rect.width, h = rect.height;
     const cx = w / 2, cy = h / 2, r = Math.min(w, h) / 2 - 20, inner = r * 0.58;
 
     ctx.clearRect(0, 0, w, h);
@@ -516,7 +525,16 @@ function renderFeatureImportance(features) {
     const canvas = document.getElementById('featureCanvas');
     if (!canvas || !features) return;
     const ctx = canvas.getContext('2d');
-    const w = canvas.width, h = canvas.height;
+    
+    // Auto-scale for retina displays
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0) return; // Hidden
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+
+    const w = rect.width, h = rect.height;
     ctx.clearRect(0, 0, w, h);
 
     const sorted = Object.entries(features).sort((a, b) => b[1] - a[1]);
@@ -624,7 +642,16 @@ function toggleChat() {
 
     if (chatOpen && chatMessages.length === 0) {
         // Welcome message
-        addChatMessage('bot', 'नमस्ते! 🙏 मैं आंचल सहायक हूँ — आपकी AI सहायिका।\n\nआप मुझसे कुछ भी पूछ सकती हैं:\n• "सीता को क्या बताऊं उनकी अगली विज़िट के बारे में?"\n• "हाई रिस्क का मतलब क्या है?"\n• "तीसरी तिमाही में क्या ध्यान रखें?"');
+        const lang = document.getElementById('chatLang') ? document.getElementById('chatLang').value : 'Hindi';
+        let greeting = '';
+        if (lang === 'Bengali') {
+            greeting = 'নমস্কার! 🙏 আমি আঁচল সহায়ক — আপনার এআই সহকারী।\n\nআপনি আমাকে যেকোনো কিছু জিজ্ঞাসা করতে পারেন:\n• "সীতাকে তার পরবর্তী ভিজিট সম্পর্কে কী বলব?"\n• "হাই রিস্ক মানে কী?"\n• "তৃতীয় ত্রৈমাসিকে কী মনে রাখা উচিত?"';
+        } else if (lang === 'English') {
+            greeting = 'Hello! 🙏 I am Anchal Sahayak — your AI assistant.\n\nYou can ask me anything:\n• "What should I tell Sita about her next visit?"\n• "What does High Risk mean?"\n• "What to keep in mind during the 3rd trimester?"';
+        } else {
+            greeting = 'नमस्ते! 🙏 मैं आंचल सहायक हूँ — आपकी AI सहायिका।\n\nआप मुझसे कुछ भी पूछ सकती हैं:\n• "सीता को क्या बताऊं उनकी अगली विज़िट के बारे में?"\n• "हाई रिस्क का मतलब क्या है?"\n• "तीसरी तिमाही में क्या ध्यान रखें?"';
+        }
+        addChatMessage('bot', greeting);
     }
 
     setTimeout(() => document.getElementById('chatInput')?.focus(), 100);
@@ -634,6 +661,15 @@ function closeChat() {
     chatOpen = false;
     document.getElementById('chatPanel').classList.remove('active');
     document.getElementById('chatFab').classList.remove('hidden');
+}
+
+function updateChatPlaceholder() {
+    const lang = document.getElementById('chatLang').value;
+    const input = document.getElementById('chatInput');
+    if (!input) return;
+    if (lang === 'Bengali') input.placeholder = 'যেকোনো কিছু জিজ্ঞাসা করুন... (Ask anything)';
+    else if (lang === 'English') input.placeholder = 'Ask anything...';
+    else input.placeholder = 'कुछ भी पूछें... (Ask anything)';
 }
 
 function addChatMessage(type, text) {
@@ -665,9 +701,10 @@ async function sendChatMessage() {
     renderChatMessages();
 
     try {
+        const chatLangStr = document.getElementById('chatLang') ? document.getElementById('chatLang').value : 'Hindi';
         const body = {
             message: message,
-            language: 'Hindi',
+            language: chatLangStr,
         };
         // If a patient is currently selected in the modal, pass context
         if (currentProfile) {

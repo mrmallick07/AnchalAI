@@ -39,6 +39,30 @@ The result is a complete **Care Action Plan** — risk score, human-readable ris
 
 ---
 
+## 🌟 Why AnchalAI? (Opportunities & Differentiation)
+
+While most existing maternal health solutions focus on basic digitization or reactive SMS reminders (sent *after* a missed visit), AnchalAI takes a fundamentally different approach:
+
+- **Predictive vs. Reactive:** AnchalAI doesn't wait for a missed appointment. It predicts the *likelihood* of a dropout using an ML classifier before it happens.
+- **Hyper-Personalized & Context-Aware:** Instead of robotic, generic texts, our Multi-Agent AI (powered by Gemini) crafts warm, culturally sensitive messages in Bengali, Hindi, or English, factoring in the mother's specific situation (e.g., distance, husband support).
+- **Zero-Cognitive-Load for ASHA Workers:** The dashboard translates complex ML outputs into simple, actionable steps. A tap on "Reach Out" instantly generates a complete Care Action Plan.
+
+### 🎯 Unique Selling Proposition (USP)
+> *"AnchalAI is the first maternal care platform designed for rural India that combines Predictive ML with Agentic Generative AI to turn raw health data into instant, culturally-sensitive interventions for frontline workers."*
+
+---
+
+## 🔮 Future Development / Roadmap
+
+**Phase 2: Scaling AnchalAI for a Billion Lives**
+
+1. **WhatsApp Integration for Zero-Friction Adoption:** Pushing daily priority lists and localized outreach messages directly to the ASHA worker's personal WhatsApp, guaranteeing massive adoption with zero learning curve.
+2. **OCR for Paper Registers:** Enabling ASHA workers to snap a photo of their physical RCH registers. Gemini’s Multimodal Vision will extract handwriting securely into the AnchalAI database, eliminating manual data entry.
+3. **Voice Bots & IVR:** Integrating Voice LLMs to trigger automated, conversational phone calls in local dialects for mothers with limited text literacy.
+4. **Offline-First Application:** Expanding into an offline-first mobile app that seamlessly syncs when network connectivity returns in remote villages.
+
+---
+
 ## 📸 Screenshots
 
 ### ASHA Worker Dashboard — Priority Outreach List
